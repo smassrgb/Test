@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ms" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AETHERIS // Simulasi Kosmik 3D Interaktif</title>
+    <!-- Tailwind CSS untuk penggayaan moden & responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js untuk grafik 3D berprestasi tinggi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Tone.js untuk penjanaan audio sintetik masa nyata -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Google Fonts: Space Grotesk & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Gaya khusus untuk kanvas penuh & kesan visual halus */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #030712;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #canvas-container {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        /* Animasi denyutan lembut untuk penunjuk status */
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.15); }
+        }
+        .animate-pulse-glow {
+            animation: pulse-glow 2.5s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="text-slate-100 antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+
+    <!-- Kanvas Latar Belakang 3D -->
+    <div id="canvas-container"></div>
+
+    <!-- Lapisan Antaramuka Pengguna (UI Glassmorphism) -->
+    <div class="relative z-10 flex flex-col justify-between w-full h-full p-4 sm:p-6 md:p-8 pointer-events-none">
+        
+        <!-- Bahagian Atas: Pengepala & Status Sistem -->
+        <header class="flex flex-wrap items-center justify-between gap-4 pointer-events-auto">
+            <div class="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl">
+                <div class="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_12px_#22d3ee] animate-pulse-glow"></div>
+                <div>
+                    <h1 class="font-display font-bold text-lg sm:text-xl tracking-wider bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+                        AETHERIS CORE
+                    </h1>
+                    <p class="text-[10px] sm:text-xs text-slate-400 tracking-widest uppercase">Enjin Kuantum 3D v4.2</p>
+                </div>
+            </div>
+
+            <!-- Kawalan Audio & Mod -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button id="btn-audio" class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900/50 hover:bg-slate-800/70 active:scale-95 backdrop-blur-xl border border-white/10 transition-all duration-200 shadow-lg text-xs sm:text-sm font-medium text-slate-200">
+                    <span id="audio-icon" class="text-base">🔇</span>
+                    <span id="audio-label" class="hidden sm:inline">Bunyi: Mati</span>
+                </button>
+                <button id="btn-hyperdrive" class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 active:scale-95 backdrop-blur-xl border border-cyan-400/30 transition-all duration-200 shadow-[0_0_20px_rgba(34,211,238,0.15)] text-xs sm:text-sm font-semibold text-cyan-300">
+                    <span>⚡</span>
+                    <span>Hyperdrive</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Bahagian Tengah: Petunjuk Interaksi & Mesej Dinamik -->
+        <main class="flex flex-col items-center justify-center text-center my-auto px-4">
+            <div id="status-banner" class="px-5 py-2 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-xs sm:text-sm text-slate-300 tracking-wide transition-opacity duration-500">
+                Gerakkan tetikus atau sentuh skrin untuk memanipulasi medan graviti • Klik untuk ledakan tenaga
+            </div>
+        </main>
+
+        <!-- Bahagian Bawah: Panel Kawalan Formasi & Tema Warna -->
+        <footer class="flex flex-col md:flex-row items-center justify-between gap-4 pointer-events-auto">
+            
+            <!-- Pemilih Formasi Geometri -->
+            <div class="flex flex-wrap items-center justify-center gap-2 p-2 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-2xl w-full md:w-auto">
+                <button data-shape="sphere" class="shape-btn active flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-inner">
+                    Sfera Kosmik
+                </button>
+                <button data-shape="torus" class="shape-btn flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-white/5 border border-transparent">
+                    Gelung Portal
+                </button>
+                <button data-shape="dna" class="shape-btn flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-white/5 border border-transparent">
+                    Heliks DNA
+                </button>
+                <button data-shape="galaxy" class="shape-btn flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-white/5 border border-transparent">
+                    Galaksi Pusaran
+                </button>
+            </div>
+
+            <!-- Pemilih Spektrum Warna -->
+            <div class="flex items-center justify-between md:justify-end gap-3 p-2.5 px-4 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-2xl w-full md:w-auto">
+                <span class="text-xs text-slate-400 font-medium uppercase tracking-wider">Spektrum:</span>
+                <div class="flex items-center gap-2.5">
+                    <button data-theme="cyber" aria-label="Tema Cyber" class="theme-btn w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-400 to-purple-500 ring-2 ring-white scale-110 transition-transform"></button>
+                    <button data-theme="solar" aria-label="Tema Solar" class="theme-btn w-7 h-7 rounded-full bg-gradient-to-tr from-amber-400 to-rose-600 opacity-70 hover:opacity-100 transition-transform"></button>
+                    <button data-theme="emerald" aria-label="Tema Emerald" class="theme-btn w-7 h-7 rounded-full bg-gradient-to-tr from-emerald-400 to-teal-600 opacity-70 hover:opacity-100 transition-transform"></button>
+                    <button data-theme="void" aria-label="Tema Void" class="theme-btn w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-400 to-pink-500 opacity-70 hover:opacity-100 transition-transform"></button>
+                </div>
+            </div>
+
+        </footer>
+    </div>
+
+    <script>
+        /**
+         * AETHERIS CORE - Simulasi Partikel 3D & Audio Sintetik
+         * Menggunakan Three.js untuk visual masa nyata dan Tone.js untuk kesan bunyi.
+         */
+
+        // Pemboleh ubah global untuk Three.js
+        let scene, camera, renderer, particles, particleGeometry, particleMaterial;
+        let coreMesh, outerRing;
+        const PARTICLE_COUNT = window.innerWidth < 768 ? 4500 : 9000;
+        
+        // Tatasusunan kedudukan sasaran & semasa untuk morfik lancar
+        let currentPositions = new Float32Array(PARTICLE_COUNT * 3);
+        let targetPositions = new Float32Array(PARTICLE_COUNT * 3);
+        let colors = new Float32Array(PARTICLE_COUNT * 3);
+        
+        // Keadaan interaksi pengguna
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let isHyperdrive = false;
+        let explosionForce = 0;
+        let currentShape = 'sphere';
+        let currentTheme = 'cyber';
+
+        // Palet Warna Tema
+        const THEMES = {
+            cyber:   { c1: new THREE.Color('#22d3ee'), c2: new THREE.Color('#a855f7'), core: 0x22d3ee },
+            solar:   { c1: new THREE.Color('#fbbf24'), c2: new THREE.Color('#e11d48'), core: 0xf59e0b },
+            emerald: { c1: new THREE.Color('#34d399'), c2: new THREE.Color('#0284c7'), core: 0x10b981 },
+            void:    { c1: new THREE.Color('#818cf8'), c2: new THREE.Color('#ec4899'), core: 0x8b5cf6 }
+        };
+
+        // Sistem Audio Sintetik (Tone.js)
+        let audioEnabled = false;
+        let synth, ambientDrone, filter;
+
+        async function toggleAudio() {
+            const btnIcon = document.getElementById('audio-icon');
+            const btnLabel = document.getElementById('audio-label');
+
+            if (!audioEnabled) {
+                await Tone.start();
+                if (!synth) {
+                    filter = new Tone.Filter(400, "lowpass").toDestination();
+                    synth = new Tone.PolySynth(Tone.Synth, {
+                        oscillator: { type: "sine" },
+                        envelope: { attack: 0.05, decay: 0.3, sustain: 0.2, release: 1.2 }
+                    }).connect(filter);
+                    synth.volume.value = -10;
+
+                    ambientDrone = new Tone.AMSynth({
+                        harmonicity: 1.5,
+                        oscillator: { type: "triangle" },
+                        envelope: { attack: 2, decay: 1, sustain: 1, release: 2 }
+                    }).connect(filter);
+                    ambientDrone.volume.value = -22;
+                }
+                ambientDrone.triggerAttack("C2");
+                audioEnabled = true;
+                btnIcon.textContent = "🔊";
+                btnLabel.textContent = "Bunyi: Aktif";
+                playSoundEffect("E4");
+            } else {
+                if (ambientDrone) ambientDrone.triggerRelease();
+                audioEnabled = false;
+                btnIcon.textContent = "🔇";
+                btnLabel.textContent = "Bunyi: Mati";
+            }
+        }
+
+        function playSoundEffect(note = "C5") {
+            if (audioEnabled && synth) {
+                try {
+                    synth.triggerAttackRelease(note, "8n");
+                } catch (e) {
+                    console.warn("Ralat audio:", e);
+                }
+            }
+        }
+
+        // Inisialisasi Adegan 3D
+        function init() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x030712, 0.015);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 38;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Teras Tengah Bercahaya (Wireframe Icosahedron)
+            const coreGeo = new THREE.IcosahedronGeometry(3.2, 2);
+            const coreMat = new THREE.MeshBasicMaterial({
+                color: THEMES[currentTheme].core,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.35
+            });
+            coreMesh = new THREE.Mesh(coreGeo, coreMat);
+            scene.add(coreMesh);
+
+            // Gelung Orbit Luar
+            const ringGeo = new THREE.RingGeometry(6.5, 6.7, 64);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: THEMES[currentTheme].core,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.25
+            });
+            outerRing = new THREE.Mesh(ringGeo, ringMat);
+            outerRing.rotation.x = Math.PI / 3;
+            scene.add(outerRing);
+
+            // Cipta Tekstur Partikel Bulat Lembut secara Prosedural (Tanpa URL luaran)
+            const spriteCanvas = document.createElement('canvas');
+            spriteCanvas.width = 32;
+            spriteCanvas.height = 32;
+            const ctx = spriteCanvas.getContext('2d');
+            const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(0.4, 'rgba(255,255,255,0.8)');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 32, 32);
+            const particleTexture = new THREE.CanvasTexture(spriteCanvas);
+
+            // Geometri Partikel
+            particleGeometry = new THREE.BufferGeometry();
+            generateShapePositions('sphere', currentPositions);
+            targetPositions.set(currentPositions);
+            applyThemeColors(currentTheme);
+
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(currentPositions, 3));
+            particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            particleMaterial = new THREE.PointsMaterial({
+                size: 0.42,
+                map: particleTexture,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+
+            setupEvents();
+        }
+
+        // Penjana Formasi Geometri 3D
+        function generateShapePositions(shape, targetArray) {
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const i3 = i * 3;
+                let x = 0, y = 0, z = 0;
+
+                if (shape === 'sphere') {
+                    // Sfera Kosmik dengan lapisan cangkerang
+                    const radius = 11 + Math.random() * 4.5;
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos((Math.random() * 2) - 1);
+                    x = radius * Math.sin(phi) * Math.cos(theta);
+                    y = radius * Math.sin(phi) * Math.sin(theta);
+                    z = radius * Math.cos(phi);
+                } 
+                else if (shape === 'torus') {
+                    // Gelung Portal (Torus Knot / Torus)
+                    const R = 12;
+                    const r = 4.2 + (Math.random() - 0.5) * 1.5;
+                    const u = Math.random() * Math.PI * 2;
+                    const v = Math.random() * Math.PI * 2;
+                    x = (R + r * Math.cos(v)) * Math.cos(u);
+                    y = (R + r * Math.cos(v)) * Math.sin(u);
+                    z = r * Math.sin(v);
+                } 
+                else if (shape === 'dna') {
+                    // Heliks Berkembar DNA
+                    const t = (i / PARTICLE_COUNT) * Math.PI * 10 - (Math.PI * 5);
+                    const strand = i % 2 === 0 ? 0 : Math.PI;
+                    const radius = 6.5 + (Math.random() - 0.5) * 1.2;
+                    x = Math.cos(t + strand) * radius;
+                    y = t * 1.3;
+                    z = Math.sin(t + strand) * radius;
+                } 
+                else if (shape === 'galaxy') {
+                    // Galaksi Pusaran 4 Lengan
+                    const arms = 4;
+                    const armIndex = i % arms;
+                    const radius = Math.pow(Math.random(), 0.7) * 20;
+                    const spinAngle = radius * 0.45;
+                    const branchAngle = (armIndex / arms) * Math.PI * 2;
+                    const randomOffset = (Math.random() - 0.5) * (1.8 - radius * 0.05);
+                    
+                    x = Math.cos(branchAngle + spinAngle) * radius + randomOffset;
+                    y = (Math.random() - 0.5) * (3.5 / (radius * 0.25 + 1));
+                    z = Math.sin(branchAngle + spinAngle) * radius + randomOffset;
+                }
+
+                targetArray[i3] = x;
+                targetArray[i3 + 1] = y;
+                targetArray[i3 + 2] = z;
+            }
+        }
+
+        // Kemas kini warna partikel mengikut tema
+        function applyThemeColors(themeKey) {
+            const theme = THEMES[themeKey];
+            const colorAttr = particleGeometry.attributes.color;
+            
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const i3 = i * 3;
+                const mixRatio = Math.random();
+                const mixedColor = theme.c1.clone().lerp(theme.c2, mixRatio);
+                colors[i3] = mixedColor.r;
+                colors[i3 + 1] = mixedColor.g;
+                colors[i3 + 2] = mixedColor.b;
+            }
+            if (colorAttr) colorAttr.needsUpdate = true;
+            if (coreMesh) coreMesh.material.color.setHex(theme.core);
+            if (outerRing) outerRing.material.color.setHex(theme.core);
+        }
+
+        // Pengendalian Acara (Tetikus, Sentuhan, Butang & Saiz Skrin)
+        function setupEvents() {
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Pergerakan Tetikus & Sentuhan untuk kawalan sudut kamera
+            const updatePointer = (clientX, clientY) => {
+                mouseX = (clientX / window.innerWidth) * 2 - 1;
+                mouseY = -(clientY / window.innerHeight) * 2 + 1;
+                if (audioEnabled && filter) {
+                    filter.frequency.rampTo(300 + Math.abs(mouseX) * 1200, 0.1);
+                }
+            };
+
+            window.addEventListener('mousemove', (e) => updatePointer(e.clientX, e.clientY));
+            window.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            }, { passive: true });
+
+            // Ledakan Tenaga apabila klik/ketik pada ruang 3D
+            document.getElementById('canvas-container').addEventListener('pointerdown', () => {
+                explosionForce = 6.5;
+                const notes = ["C4", "E4", "G4", "B4", "D5"];
+                playSoundEffect(notes[Math.floor(Math.random() * notes.length)]);
+            });
+
+            // Butang Audio
+            document.getElementById('btn-audio').addEventListener('click', toggleAudio);
+
+            // Butang Hyperdrive
+            const btnHyper = document.getElementById('btn-hyperdrive');
+            btnHyper.addEventListener('click', () => {
+                isHyperdrive = !isHyperdrive;
+                btnHyper.classList.toggle('ring-2');
+                btnHyper.classList.toggle('ring-cyan-400');
+                playSoundEffect(isHyperdrive ? "G5" : "C4");
+            });
+
+            // Butang Penukaran Formasi
+            document.querySelectorAll('.shape-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.shape-btn').forEach(b => {
+                        b.classList.remove('active', 'bg-cyan-500/20', 'text-cyan-300', 'border-cyan-400/40', 'shadow-inner');
+                        b.classList.add('text-slate-400', 'border-transparent');
+                    });
+                    const targetBtn = e.currentTarget;
+                    targetBtn.classList.add('active', 'bg-cyan-500/20', 'text-cyan-300', 'border-cyan-400/40', 'shadow-inner');
+                    targetBtn.classList.remove('text-slate-400', 'border-transparent');
+
+                    currentShape = targetBtn.dataset.shape;
+                    generateShapePositions(currentShape, targetPositions);
+                    playSoundEffect("A4");
+                });
+            });
+
+            // Butang Penukaran Spektrum Warna
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.theme-btn').forEach(b => {
+                        b.classList.remove('ring-2', 'ring-white', 'scale-110');
+                        b.classList.add('opacity-70');
+                    });
+                    const targetBtn = e.currentTarget;
+                    targetBtn.classList.add('ring-2', 'ring-white', 'scale-110');
+                    targetBtn.classList.remove('opacity-70');
+
+                    currentTheme = targetBtn.dataset.theme;
+                    applyThemeColors(currentTheme);
+                    playSoundEffect("F4");
+                });
+            });
+        }
+
+        // Gelung Animasi Utama
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+            const speedMultiplier = isHyperdrive ? 3.8 : 1.0;
+
+            // Putaran lancar mengikut kursor/sentuhan pengguna
+            targetRotationY += (mouseX * 0.05) * speedMultiplier;
+            targetRotationX += (mouseY * 0.05) * speedMultiplier;
+
+            particles.rotation.y += (0.0025 * speedMultiplier) + (targetRotationY - particles.rotation.y) * 0.04;
+            particles.rotation.x += (targetRotationX - particles.rotation.x) * 0.04;
+
+            // Animasi Teras & Gelung
+            coreMesh.rotation.x = elapsedTime * 0.4 * speedMultiplier;
+            coreMesh.rotation.y = elapsedTime * 0.6 * speedMultiplier;
+            const pulseScale = 1 + Math.sin(elapsedTime * 3) * 0.08 + (explosionForce * 0.15);
+            coreMesh.scale.set(pulseScale, pulseScale, pulseScale);
+
+            outerRing.rotation.z = -elapsedTime * 0.3 * speedMultiplier;
+            outerRing.rotation.x = (Math.PI / 3) + Math.sin(elapsedTime * 0.5) * 0.2;
+
+            // Pengurangan daya ledakan secara beransur-ansur
+            explosionForce *= 0.92;
+
+            // Interpolasi kedudukan partikel (Morfik 3D + Gelombang)
+            const positions = particleGeometry.attributes.position.array;
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const i3 = i * 3;
+                
+                const tx = targetPositions[i3];
+                const ty = targetPositions[i3 + 1];
+                const tz = targetPositions[i3 + 2];
+
+                // Kesan gelombang organik
+                const wave = Math.sin(elapsedTime * 2 + i * 0.01) * 0.12;
+                const expand = 1 + (explosionForce * 0.18);
+
+                positions[i3]     += ((tx * expand + wave) - positions[i3]) * 0.07;
+                positions[i3 + 1] += ((ty * expand + wave) - positions[i3 + 1]) * 0.07;
+                positions[i3 + 2] += ((tz * expand + wave) - positions[i3 + 2]) * 0.07;
+            }
+            particleGeometry.attributes.position.needsUpdate = true;
+
+            // Kesan zum kamera semasa Hyperdrive
+            const targetZ = isHyperdrive ? 26 : 38;
+            camera.position.z += (targetZ - camera.position.z) * 0.05;
+
+            renderer.render(scene, camera);
+        }
+
+        // Mulakan simulasi selepas tetingkap dimuatkan sepenuhnya
+        window.onload = function() {
+            init();
+            animate();
+        };
+    </script>
+</body>
+</html>
